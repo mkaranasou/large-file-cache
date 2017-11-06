@@ -15,8 +15,8 @@ from pymemcache.exceptions import (
 
 
 class LargeFileCacheClientFactory(object):
-    def __call__(self, backend='memcache', *args, **kwargs):
-        if backend == 'memcache':
+    def __call__(self, backend='memcached', *args, **kwargs):
+        if backend == 'memcached':
             return LargeFileMemcacheClient(*args, **kwargs)
         raise NotImplementedError("Large file caching client for backend {} "
                                   "is not yet implemented".format(backend))

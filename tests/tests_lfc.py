@@ -12,7 +12,7 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
     """
 
     def setUp(self):
-
+        # todo: mock / create test memcached
         self.large_file_path = 'bigoldfile.dat'
         self.larger_file_path = 'bigoldfile_illegal.dat'
         self.temp_path = None
@@ -48,7 +48,7 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
         Basic check that it can connect and does not throw an exception
         :return: None
         """
-        self.lfc = LargeFileCacheClientFactory()('memcache',
+        self.lfc = LargeFileCacheClientFactory()('memcached',
                                                  (MEMCACHED_HOST,
                                                   MEMCACHED_PORT))
         self.assertTrue(isinstance(self.lfc, LargeFileMemcacheClient))
@@ -58,9 +58,9 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
         Tests successfully saving the large file to memcached
         :return: None
         """
-        self.lfc = LargeFileCacheClientFactory('memcached',
-                                               (MEMCACHED_HOST,
-                                                MEMCACHED_PORT))
+        self.lfc = LargeFileCacheClientFactory()('memcached',
+                                                 (MEMCACHED_HOST,
+                                                  MEMCACHED_PORT))
         success = self.lfc.set(self.large_file_path, self.large_file)
         self.assertTrue(success)
 
@@ -71,9 +71,9 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
         """
         import filecmp
 
-        self.lfc = LargeFileCacheClientFactory('memcached',
-                                               (MEMCACHED_HOST,
-                                                MEMCACHED_PORT))
+        self.lfc = LargeFileCacheClientFactory()('memcached',
+                                                 (MEMCACHED_HOST,
+                                                  MEMCACHED_PORT))
         # first set
         success = self.lfc.set(self.large_file_path, self.large_file)
         self.assertTrue(success)
@@ -95,9 +95,9 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
         Correctly save and delete a file and its parts
         :return: None
         """
-        self.lfc = LargeFileCacheClientFactory('memcached',
-                                               (MEMCACHED_HOST,
-                                                MEMCACHED_PORT))
+        self.lfc = LargeFileCacheClientFactory()('memcached',
+                                                 (MEMCACHED_HOST,
+                                                  MEMCACHED_PORT))
         # firt set
         success = self.lfc.set(self.large_file_path, self.large_file)
         self.assertTrue(success)
@@ -112,9 +112,9 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
         Correctly delete many files
         :return: None
         """
-        self.lfc = LargeFileCacheClientFactory('memcached',
-                                               (MEMCACHED_HOST,
-                                                MEMCACHED_PORT))
+        self.lfc = LargeFileCacheClientFactory()('memcached',
+                                                 (MEMCACHED_HOST,
+                                                  MEMCACHED_PORT))
         # first set
         success = self.lfc.set(self.large_file_path, self.large_file)
         self.assertTrue(success)
@@ -135,10 +135,10 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
         Test delete with wrong key
         :return: None
         """
-        self.lfc = LargeFileCacheClientFactory('memcached',
-                                               (MEMCACHED_HOST,
-                                                MEMCACHED_PORT),
-                                               raise_on_error=True)
+        self.lfc = LargeFileCacheClientFactory()('memcached',
+                                                 (MEMCACHED_HOST,
+                                                  MEMCACHED_PORT),
+                                                 raise_on_error=True)
 
         with self.assertRaises(Exception) as context:
             self.lfc.delete(self.large_file_path + "test")
@@ -151,9 +151,9 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
         Do not raise error when trying to set larger file than allowed
         :return:
         """
-        self.lfc = LargeFileCacheClientFactory('memcached',
-                                               (MEMCACHED_HOST,
-                                                MEMCACHED_PORT))
+        self.lfc = LargeFileCacheClientFactory()('memcached',
+                                                 (MEMCACHED_HOST,
+                                                  MEMCACHED_PORT))
 
         self.assertFalse(self.lfc.raise_on_error)
 
@@ -165,10 +165,10 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
         Raise error when trying to set larger file than allowed
         :return: None
         """
-        self.lfc = LargeFileCacheClientFactory('memcached',
-                                               (MEMCACHED_HOST,
-                                                MEMCACHED_PORT),
-                                               raise_on_error=True)
+        self.lfc = LargeFileCacheClientFactory()('memcached',
+                                                 (MEMCACHED_HOST,
+                                                  MEMCACHED_PORT),
+                                                 raise_on_error=True)
         self.assertTrue(self.lfc.raise_on_error)
 
         with self.assertRaises(Exception) as context:
@@ -181,9 +181,9 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
         Test invalid key get - raise_on_error=False
         :return:
         """
-        self.lfc = LargeFileCacheClientFactory('memcached',
-                                               (MEMCACHED_HOST,
-                                                MEMCACHED_PORT))
+        self.lfc = LargeFileCacheClientFactory()('memcached',
+                                                 (MEMCACHED_HOST,
+                                                  MEMCACHED_PORT))
 
         success = self.lfc.get(self.large_file_path + "_not_valid")
         self.assertFalse(success)
@@ -205,10 +205,10 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
                         in context.exception)
 
     def test_get_file_part_key(self):
-        self.lfc = LargeFileCacheClientFactory('memcached',
-                                               (MEMCACHED_HOST,
-                                                MEMCACHED_PORT),
-                                               raise_on_error=True)
+        self.lfc = LargeFileCacheClientFactory()('memcached',
+                                                 (MEMCACHED_HOST,
+                                                  MEMCACHED_PORT),
+                                                 raise_on_error=True)
 
         self.assertTrue(self.lfc.get_file_part_key(self.larger_file_path, 1)
                         == "{}_{}".format(self.larger_file_path, 1))
@@ -219,9 +219,9 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
         and returns True
         :return: None
         """
-        self.lfc = LargeFileCacheClientFactory('memcached',
-                                               (MEMCACHED_HOST,
-                                                MEMCACHED_PORT))
+        self.lfc = LargeFileCacheClientFactory()('memcached',
+                                                 (MEMCACHED_HOST,
+                                                  MEMCACHED_PORT))
 
         self.assertTrue(self.lfc.is_of_appropriate_size(self.large_file))
 
@@ -231,9 +231,9 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
         returns False
         :return: None
         """
-        self.lfc = LargeFileCacheClientFactory('memcached',
-                                               (MEMCACHED_HOST,
-                                                MEMCACHED_PORT))
+        self.lfc = LargeFileCacheClientFactory()('memcached',
+                                                 (MEMCACHED_HOST,
+                                                  MEMCACHED_PORT))
 
         self.assertFalse(self.lfc.is_of_appropriate_size(self.larger_file))
 
@@ -243,9 +243,9 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
         max chunk size of Memcached
         :return: None
         """
-        self.lfc = LargeFileCacheClientFactory('memcached',
-                                               (MEMCACHED_HOST,
-                                                MEMCACHED_PORT))
+        self.lfc = LargeFileCacheClientFactory()('memcached',
+                                                 (MEMCACHED_HOST,
+                                                  MEMCACHED_PORT))
         self.assertLess(self.lfc.get_chunk_size(self.large_file_path),
                         self.lfc._max_chunk)
 
