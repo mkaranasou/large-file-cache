@@ -6,3 +6,7 @@ build/
 dist/
 
 lfc\.egg-info/
+
+tests/bigoldfile\.dat
+
+tests/bigoldfile_illegal\.dat

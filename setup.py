@@ -31,7 +31,7 @@ setup(name='lfc',
       keywords=['memcached',
                 'pymemcache'],
       package_dir={'': 'src'},
-      packages=find_packages(exclude=['contrib', 'docs', 'tests']),
+      packages=['lfc'] + find_packages(exclude=['contrib', 'docs', 'tests']),
       tests_require=[
           'nose',
       ],
