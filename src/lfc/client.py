@@ -63,6 +63,16 @@ class LargeFileMemcacheClient(Client):
             self.logger.error(msg)
             return False
 
+    @property
+    def max_chunk(self):
+        return self._max_chunk
+
+    @max_chunk.setter
+    def max_chunk(self, value):
+        assert value <= MAX_CHUNK, "Memcached does not support chunks " \
+                                   "bigger than {}.".format(MAX_CHUNK)
+        self._max_chunk = value
+
     @staticmethod
     def get_file_part_key(fname, part):
         """Returns filename_partno"""

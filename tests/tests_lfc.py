@@ -252,6 +252,40 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
         self.assertLess(self.lfc.get_chunk_size(self.large_file_path),
                         self.lfc._max_chunk)
 
+    def test_change_max_file_size(self):
+        """
+        Asserts that get_chunk_size returns a size in bytes less than the
+        max chunk size of Memcached
+        :return: None
+        """
+        self.lfc = LargeFileCacheClientFactory()('memcached',
+                                                 (MEMCACHED_HOST,
+                                                  MEMCACHED_PORT))
+
+        self.lfc._max_file_size = 49 * 1024 * 1024
+        # first set
+        success = self.lfc.set(self.large_file_path, self.large_file)
+        self.assertFalse(success)
+
+        self.assertLess(self.lfc.get_chunk_size(self.large_file_path),
+                        self.lfc.max_chunk)
+
+    def test_change_max_chunk(self):
+        """
+        Asserts that get_chunk_size returns a size in bytes less than the
+        max chunk size of Memcached
+        :return: None
+        """
+        self.lfc = LargeFileCacheClientFactory()('memcached',
+                                                 (MEMCACHED_HOST,
+                                                  MEMCACHED_PORT))
+
+        with self.assertRaises(AssertionError) as context:
+            self.lfc.max_chunk = 2 * 1024 * 1024
+
+        print context.exception
+        self.assertTrue('Memcached does not support chunks bigger than'
+                        in context.exception.message)
 
 if __name__ == '__main__':
     unittest.main()
