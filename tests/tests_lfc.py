@@ -1,9 +1,8 @@
 import os
 import unittest
 
-import sys
 from lfc.client import LargeFileCacheClientFactory, LargeFileMemcacheClient
-from lfc.config import MEMCACHED_HOST, MEMCACHED_PORT, MAX_FILE_SIZE
+from lfc.config import MEMCACHED_HOST, MEMCACHED_PORT, MAX_FILE_SIZE, MAX_CHUNK
 
 
 class TestLargeFileMemcachedClient(unittest.TestCase):
@@ -193,11 +192,12 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
         Test invalid key get - raise_on_error=True
         :return:
         """
-        self.lfc = LargeFileCacheClientFactory('memcached',
-                                               (MEMCACHED_HOST,
-                                                MEMCACHED_PORT),
-                                               raise_on_error=True)
+        self.lfc = LargeFileCacheClientFactory()('memcached',
+                                                 (MEMCACHED_HOST,
+                                                  MEMCACHED_PORT),
+                                                 raise_on_error=True)
         self.assertTrue(self.lfc.raise_on_error)
+
         with self.assertRaises(Exception) as context:
             self.lfc.get(self.large_file_path + "_not_valid")
 
@@ -210,8 +210,11 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
                                                   MEMCACHED_PORT),
                                                  raise_on_error=True)
 
-        self.assertTrue(self.lfc.get_file_part_key(self.larger_file_path, 1)
-                        == "{}_{}".format(self.larger_file_path, 1))
+        self.assertTrue(
+            self.lfc.get_file_part_key(
+                self.larger_file_path, 1
+            ) == "{}_{}".format(self.larger_file_path, 1)
+        )
 
     def test_successful_is_of_appropriate_size(self):
         """

@@ -1,17 +1,11 @@
 import json
 import logging
 import sys
+import hashlib
 from pymemcache.client import Client
-from hashlib import md5
+from config import MAX_FILE_SIZE, MAX_CHUNK
 
-from pymemcache.exceptions import (
-    MemcacheClientError,
-    MemcacheUnknownCommandError,
-    MemcacheIllegalInputError,
-    MemcacheServerError,
-    MemcacheUnknownError,
-    MemcacheUnexpectedCloseError
-)
+from pymemcache.exceptions import MemcacheIllegalInputError
 
 
 class LargeFileCacheClientFactory(object):
@@ -29,8 +23,11 @@ class LargeFileMemcacheClient(Client):
         It inherits from pymemcache's Client and overrides all the relative and
         necessary methods
     """
+
+    _max_file_size = MAX_FILE_SIZE
+    _max_chunk = MAX_CHUNK
+
     def __init__(self, *args, **kwargs):
-        from config import MAX_FILE_SIZE, MAX_CHUNK
 
         self.raise_on_error = False
         if 'raise_on_error' in kwargs:
@@ -39,9 +36,8 @@ class LargeFileMemcacheClient(Client):
 
         super(LargeFileMemcacheClient, self).__init__(*args, **kwargs)
 
+        self.logger = logging.getLogger(__name__)
         self.__use_base = False
-        self._max_file_size = MAX_FILE_SIZE
-        self._max_chunk = MAX_CHUNK
         self._max_no_parts = self._max_chunk / self._max_file_size
         self._cache = super(LargeFileMemcacheClient, self)
         self._max_post_fix = "_100"
@@ -64,7 +60,7 @@ class LargeFileMemcacheClient(Client):
         if self.raise_on_error:
             raise exc(msg)
         else:
-            logging.error(msg)
+            self.logger.error(msg)
             return False
 
     @staticmethod
@@ -98,81 +94,87 @@ class LargeFileMemcacheClient(Client):
         :param f: file
         :return: boolean, True if file is within the limit, False otherwise
         """
-        if hasattr(f, 'content_length'):
-            return f.content_length <= self._max_file_size
-        try:
-            position = f.tell()
-            f.seek(0, 2)      # seek to end
-            size = f.tell()
-            f.seek(position)  # back
-            return size <= self._max_file_size
-        except (AttributeError, IOError):
-            pass
-
-        return True
+        return self.get_size(f) <= self._max_file_size
 
     def get_chunk_size(self, key):
-        return self._max_chunk - (sys.getsizeof(key) + sys.getsizeof(self._max_post_fix))
+        return self._max_chunk - (sys.getsizeof(key) +
+                                  sys.getsizeof(self._max_post_fix))
 
     def get(self, key, default=None):
         """
-        Overrides default get functionality to provide chunk retrieval and verify everything went ok.
+        Overrides default get functionality to provide chunk retrieval and
+        verify everything went ok.
         :param key: str, The key to search in memcached, usually the filename
         :param default: boolean
-        :return: [], a single stream of bytes
+        :return: list: a single stream of bytes
         """
 
         # Get the file info first
         file_info = self._cache.get(key, default=default)
 
         if not file_info:  # file not found
-            return self._raise_or_return("File for key {} not found".format(key))
+            return self._raise_or_return(
+                "File for key {} not found".format(key)
+            )
 
         data = []
-        hash_md5 = md5()
+        hash_md5 = hashlib.md5()
 
         # todo: get_many should be better but not memory wise
         # todo: do not load all at once
         for i in range(int(file_info["parts_num"])):
-            logging.info("{} vs {}".format(self.get_file_part_key(key, i), key))
-            part = self._cache.get(self.get_file_part_key(key, i), default=None)
+            self.logger.info("{} vs {}".format(
+                self.get_file_part_key(key, i), key)
+            )
+            part = self._cache.get(
+                self.get_file_part_key(key, i),
+                default=None
+            )
             hash_md5.update(part)
             data.append(part)
         digest = hash_md5.hexdigest()
         if not file_info["checksum"] == hash_md5.hexdigest():
-            logging.error("{} vs {}".format(file_info, digest))
+            self.logger.error("{} vs {}".format(file_info, digest))
             raise IOError("Could not retrieve the file correctly")
 
         return data
 
     def get_partial(self, key, default=None):
         """
-        Overrides default get functionality to provide chunk retrieval and verify everything went ok.
+        Overrides default get functionality to provide chunk retrieval
+        and verify everything went ok.
         :param key: str, The key to search in memcached, usually the filename
         :param default: boolean
-        :return: [], a single stream of bytes
+        :return: list: a single stream of bytes
         """
 
         # Get the file info first
         file_info = self._cache.get(key, default=default)
 
         if not file_info:  # file not found
-            yield self._raise_or_return("File for key {} not found".format(key))
+            yield self._raise_or_return("File for key {} not found"
+                                        .format(key))
 
         data = []
-        hash_md5 = md5()
+        hash_md5 = hashlib.md5()
 
         # todo: get_many should be better but not memory wise
         # todo: do not load all at once
         for i in range(int(file_info["parts_num"])):
-            logging.info("{} vs {}".format(self.get_file_part_key(key, i), key))
-            part = self._cache.get(self.get_file_part_key(key, i), default=None)
+            self.logger.info("{} vs {}".format(
+                self.get_file_part_key(key, i),
+                key)
+            )
+            part = self._cache.get(
+                self.get_file_part_key(key, i),
+                default=None
+            )
             hash_md5.update(part)
             data.append(part)
             yield part
         digest = hash_md5.hexdigest()
         if not file_info["checksum"] == hash_md5.hexdigest():
-            logging.error("{} vs {}".format(file_info, digest))
+            self.logger.error("{} vs {}".format(file_info, digest))
             raise IOError("Could not retrieve the file correctly")
 
         # return data
@@ -206,20 +208,25 @@ class LargeFileMemcacheClient(Client):
             try:
                 return self._cache.set(key, f)
             except MemcacheIllegalInputError as e:
-                return self._raise_or_return(e.message, MemcacheIllegalInputError)
+                return self._raise_or_return(
+                    e.message,
+                    MemcacheIllegalInputError
+                )
 
         # if not self.__use_base means we are not storing a chunk
-        # so let's check if file or has read
-        if not isinstance(f, file) and not hasattr(f, 'read'):
-            return self._raise_or_return("{} is not a file.".format(key))
+        # so let's check if file and has read
+        if not hasattr(f, 'read') and not hasattr(f, 'seek'):
+            return self._raise_or_return("{} is not a file.".format(key),
+                                         AttributeError)
 
         # check if file exists
         if not self._cache.get(key):
             i = 0
             parts_to_store = {}
-            hash_md5 = md5()
+            hash_md5 = hashlib.md5()
 
-            # the proper chunk will be found by removing the size of the key + max prefix size from the max chunk
+            # the proper chunk will be found by removing the size of the
+            # key + max prefix size from the max chunk
             chunk = self.get_chunk_size(key)
 
             for piece in iter(lambda: f.read(chunk), b""):
@@ -228,7 +235,8 @@ class LargeFileMemcacheClient(Client):
                 i += 1
 
             # also store the hash for the reconstruction
-            parts_to_store[key] = {"checksum": hash_md5.hexdigest(), "parts_num": i}
+            parts_to_store[key] = {"checksum": hash_md5.hexdigest(),
+                                   "parts_num": i}
 
             self.__use_base = True
             try:
@@ -240,9 +248,11 @@ class LargeFileMemcacheClient(Client):
             self.__use_base = False
 
             if not success:
-                logging.error("Could not save part {} to memcached. Performing roll-back".format(i))
+                self.logger.error("Could not save part {} to memcached. "
+                              "Performing roll-back".format(i))
                 if not self._cache.delete_many(parts_to_store):
-                    return self._raise_or_return("Could not rollback for {}".format(key))
+                    return self._raise_or_return(
+                        "Could not rollback for {}".format(key))
         else:
             return self._raise_or_return("Key {} already exists.".format(key))
 
@@ -252,10 +262,14 @@ class LargeFileMemcacheClient(Client):
         """
         Save many files to memcached.
         Uses set underneath to insert many values
-        :param values: list[dict[str, file]], a list with the string keys - file pairs to set
-        :param expire: int, the expiration of the files, defaults to 0 - no expiration
-        :param noreply: boolean, if memcached is required to reply - defaults to None to have a consistent behavior
-        :return: boolean, indicates whether everything went ok or not. True if all is good, else False
+        :param values: list[dict[str, file]], a list with the string
+        keys - file pairs to set
+        :param expire: int, the expiration of the files, defaults
+        to 0 - no expiration
+        :param noreply: boolean, if memcached is required to reply
+        - defaults to None to have a consistent behavior
+        :return: boolean, indicates whether everything went ok or not. True
+        if all is good, else False
         """
         success = []
         # todo: optimize
@@ -270,8 +284,10 @@ class LargeFileMemcacheClient(Client):
         """
         Deletes the given file (key) from memcached
         :param key:str, the key to delete, e.g. the name of the file
-        :param noreply: boolean, if memcached is required to reply - defaults to None to have a consistent behavior
-        :return: boolean, indicates whether everything went ok or not. True if all is good, else False
+        :param noreply: boolean, if memcached is required to reply
+        - defaults to None to have a consistent behavior
+        :return: boolean, indicates whether everything went ok or not.
+        True if all is good, else False
         """
         success = False
 
@@ -291,16 +307,21 @@ class LargeFileMemcacheClient(Client):
             if not success:
                 return self._raise_or_return("Could not delete")
         else:
-            return self._raise_or_return("Could not delete {}. File not found in cache".format(key))
+            return self._raise_or_return(
+                "Could not delete {}. File not found in cache".format(key))
 
         return success
 
     def delete_many(self, keys, noreply=None):
         """
-        Uses simple delete underneath to delete files and their data from memcached
-        :param keys: [str], a list of the string keys we want to delete. E.g. a list of filenames
-        :param noreply: boolean, if memcached is required to reply - defaults to None to have a consistent behavior
-        :return: boolean, indicates whether everything went ok or not. True if all is good, else False
+        Uses simple delete underneath to delete files and their data from
+        memcached
+        :param keys: [str], a list of the string keys we want to delete. E.g.
+        a list of filenames
+        :param noreply: boolean, if memcached is required to reply - defaults
+        to None to have a consistent behavior
+        :return: boolean, indicates whether everything went ok or not.
+        True if all is good, else False
         """
         success = []
         for key in keys:
@@ -343,5 +364,3 @@ class LargeFileMemcacheClient(Client):
 
     def __delitem__(self, key):
         self.delete(key, noreply=True)
-
-
