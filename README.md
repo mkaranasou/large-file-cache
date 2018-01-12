@@ -10,7 +10,7 @@ To install:
 
 or if you have cloned the repo and want to work on it, you can:
 
-`pip install -e . --process-dependency-links`
+`pip install -e .`
 
 ## Usage
 ### Memcached
