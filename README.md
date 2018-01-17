@@ -34,7 +34,11 @@ The defaults are in `lfc.config`.
 ```python
 from lfc.client import LargeFileCacheClientFactory
 
-client = LargeFileCacheClientFactory()('memcached', ('MEMCACHED_HOST', 'MEMCACHED_PORT'))
+client = LargeFileCacheClientFactory()('memcached', (
+    'MEMCACHED_HOST', 
+    'MEMCACHED_PORT'
+    )
+)
 
 file_name = 'somebigfile'
 
