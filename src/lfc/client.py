@@ -36,11 +36,11 @@ class LargeFileMemcacheClient(Client):
 
         super(LargeFileMemcacheClient, self).__init__(*args, **kwargs)
 
-        self.logger = logging.getLogger(__name__)
         self.__use_base = False
         self._max_no_parts = self._max_chunk / self._max_file_size
         self._cache = super(LargeFileMemcacheClient, self)
         self._max_post_fix = "_100"
+        self.logger = logging.getLogger(__name__)
 
         # requires serializer - deserializer # todo: can yield errors
         if self.serializer is None:
@@ -69,8 +69,9 @@ class LargeFileMemcacheClient(Client):
 
     @max_chunk.setter
     def max_chunk(self, value):
-        assert value <= MAX_CHUNK, "Memcached does not support chunks " \
-                                   "bigger than {}.".format(MAX_CHUNK)
+        assert value <= MAX_CHUNK, "Chunk is bigger than MAX_CHUNK {}.".format(
+            MAX_CHUNK
+        )
         self._max_chunk = value
 
     @staticmethod
@@ -143,7 +144,7 @@ class LargeFileMemcacheClient(Client):
             hash_md5.update(part)
             data.append(part)
         digest = hash_md5.hexdigest()
-        if not file_info["checksum"] == hash_md5.hexdigest():
+        if not file_info["checksum"] == digest:
             self.logger.error("{} vs {}".format(file_info, digest))
             raise IOError("Could not retrieve the file correctly")
 
