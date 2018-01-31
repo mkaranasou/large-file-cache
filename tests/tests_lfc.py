@@ -2,6 +2,7 @@ import os
 import unittest
 
 import mock as mock
+from mocks import MockCache
 from lfc.client import LargeFileCacheClientFactory, LargeFileMemcacheClient
 from lfc.config import MEMCACHED_HOST, MEMCACHED_PORT, MAX_FILE_SIZE, MAX_CHUNK
 
@@ -29,6 +30,7 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
         self.lfc = LargeFileCacheClientFactory()('memcached',
                                                  (MEMCACHED_HOST,
                                                   MEMCACHED_PORT))
+        self.lfc._cache = MockCache()
 
     def tearDown(self):
         """
@@ -38,8 +40,8 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
         :return:
         """
         self.patcher.stop()
-        # self.lfc.flush_all()
-        # self.lfc.close()
+        self.lfc.flush_all()
+        self.lfc.close()
         self.large_file.close()
         self.larger_file.close()
         if self.temp_path:
@@ -59,38 +61,24 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
         Tests successfully saving the large file to memcached
         :return: None
         """
-        self.lfc._cache = self.mock_client
         # the file does not exist in cache
         self.lfc._cache.get = mock.MagicMock(return_value=False)
         success = self.lfc.set(self.large_file_path, self.large_file)
         self.assertTrue(success)
         calls = [mock.call(self.large_file_path),
                  mock.call(self.large_file_path)]
-        self.mock_client.get.assert_has_calls(calls)
+        self.lfc._cache.get.assert_has_calls(calls)
 
-    @mock.patch('hashlib.md5')
-    def test_successfull_get(self, mock_hasher):
+    def test_successfull_get(self):
         """
         Test the successful retrieval of a file
         :return: None
         """
         import filecmp
-        # todo
-        # return
-        mock_hasher.return_value.update = mock.MagicMock()
-        mock_hasher.return_value.hexdigest = mock.MagicMock()
-        mock_hasher.return_value.hexdigest.side_effect = [1 for i in range(50)]
-
-        self.lfc._cache = self.mock_client
-        # the file does not exist in cache
-        self.lfc._cache.get = mock.MagicMock(return_value=False)
-
         # first set
         success = self.lfc.set(self.large_file_path, self.large_file)
         self.assertTrue(success)
 
-        self.lfc._cache.get = mock.MagicMock(return_value={'parts_num': 2,
-                                                           'checksum': 1})
         # then get
         data = list(self.lfc.get(self.large_file_path))
         self.assertIsNotNone(data)
@@ -102,6 +90,35 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
                 out.write(each)
 
         self.assertTrue(filecmp.cmp('out.dat', self.large_file_path))
+
+        # import filecmp
+        # # todo
+        # # return
+        # mock_hasher.return_value.update = mock.MagicMock()
+        # mock_hasher.return_value.hexdigest = mock.MagicMock()
+        # mock_hasher.return_value.hexdigest.side_effect = [1 for i in range(50)]
+        #
+        # self.lfc._cache = self.mock_client
+        # # the file does not exist in cache
+        # self.lfc._cache.get = mock.MagicMock(return_value=False)
+        #
+        # # first set
+        # success = self.lfc.set(self.large_file_path, self.large_file)
+        # self.assertTrue(success)
+        #
+        # self.lfc._cache.get = mock.MagicMock(return_value={'parts_num': 2,
+        #                                                    'checksum': 1})
+        # # then get
+        # data = list(self.lfc.get(self.large_file_path))
+        # self.assertIsNotNone(data)
+        # self.assertTrue(len(data) > 0)
+        #
+        # self.temp_path = "out.dat"
+        # with open(self.temp_path, 'wb') as out:
+        #     for each in data:
+        #         out.write(each)
+        #
+        # self.assertTrue(filecmp.cmp('out.dat', self.large_file_path))
 
     def test_successful_delete(self):
         """
