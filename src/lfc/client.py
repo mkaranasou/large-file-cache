@@ -90,7 +90,7 @@ class LargeFileMemcacheClient(Client):
             return f.content_length
         try:
             position = f.tell()
-            f.seek(0, 2)      # seek to end
+            f.seek(0, 2)  # seek to end
             size = f.tell()
             f.seek(position)  # back
             return size
@@ -260,7 +260,7 @@ class LargeFileMemcacheClient(Client):
 
             if not success:
                 self.logger.error("Could not save part {} to memcached. "
-                              "Performing roll-back".format(i))
+                                  "Performing roll-back".format(i))
                 if not self._cache.delete_many(parts_to_store):
                     return self._raise_or_return(
                         "Could not rollback for {}".format(key))

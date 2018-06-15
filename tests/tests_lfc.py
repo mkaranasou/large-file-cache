@@ -34,14 +34,10 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
 
     def tearDown(self):
         """
-        Clear Memcached
-        Close Files
-        Delete files
+        Stop pymemcache patcher, close and remove test files
         :return:
         """
         self.patcher.stop()
-        self.lfc.flush_all()
-        self.lfc.close()
         self.large_file.close()
         self.larger_file.close()
         if self.temp_path:
@@ -96,7 +92,8 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
         # # return
         # mock_hasher.return_value.update = mock.MagicMock()
         # mock_hasher.return_value.hexdigest = mock.MagicMock()
-        # mock_hasher.return_value.hexdigest.side_effect = [1 for i in range(50)]
+        # mock_hasher.return_value.hexdigest.side_effect = [
+        # 1 for i in range(50)]
         #
         # self.lfc._cache = self.mock_client
         # # the file does not exist in cache
@@ -280,7 +277,7 @@ class TestLargeFileMemcachedClient(unittest.TestCase):
         with self.assertRaises(AssertionError) as context:
             self.lfc.max_chunk = 2 * 1024 * 1024
 
-        print context.exception
+        print(context.exception)
         self.assertTrue('Chunk is bigger than MAX_CHUNK {}.'.format(MAX_CHUNK)
                         in context.exception.message)
 

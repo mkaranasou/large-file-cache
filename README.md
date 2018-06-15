@@ -25,7 +25,7 @@ memcached
 or start the Docker container for Memcached.
 
 The only parameters that need to be set, is the `MEMCACHED_HOST`, e.g. `localhost` and the `MEMCACHED_PORT`, e.g.
-`11221`.
+`11211`.
 
 Other parameters that can be set is the `MAX_FILE_SIZE` and the `MAX_CHUNK`, which defines the maximum size of the value chunk in the `{key:value}` pair stored in Memcached.
 
