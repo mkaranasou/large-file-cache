@@ -34,6 +34,7 @@ setup(name='lfc',
       packages=['lfc'] + find_packages(exclude=['contrib', 'docs', 'tests']),
       tests_require=[
           'nose',
+          'mock'
       ],
       test_suite='nose.collector',
       install_requires=REQUIREMENTS,
